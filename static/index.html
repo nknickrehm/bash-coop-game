@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Kill me pls</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.3.0/socket.io.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vue/dist/vue.js"></script>
+    <style>
+        html, body {
+            width: 100vw;
+            height: 100vh;
+            margin: 0;
+            background: #000;
+            color: #fff;
+        }
+        body {
+            font-family: monospace;
+            box-sizing: border-box;
+        }
+        .hud {
+            width: 100vw;
+            height: 100px;
+            clear: both;
+            padding: 2rem;
+            box-sizing: border-box;
+            color: red;
+        }
+        .current-player .hud {
+            color: green;
+        }
+        .wrapper {
+            position: relative;
+            width: 100vw;
+            height: calc(100vh - 100px);
+            overflow: hidden;
+            box-sizing: border-box;
+        }
+        .shell {
+            position:absolute;
+            width: 100vw;
+            bottom:0;
+            left: 0;
+            padding: 2rem;
+            box-sizing: border-box;
+            color: #aaa;
+        }
+        .current-player .shell {
+            color: #fff;
+        }
+    </style>
+</head>
+<body>
+    <div id="app" :class="currentPlayerId === playerId ? 'current-player' : ''">
+        <div class="hud">
+            Current player has {{ currentPlayerRemainingInput }} move{{ currentPlayerRemainingInput !== 1 ? 's' : ''}} left</p>
+        </div>
+        <div class="wrapper">
+            <div class="shell">
+                <div id="stdout">
+                    <p v-for="(output, key) in stdout" :class="'stdout-' + key">{{ output }}</p>
+                </div>
+                <p id="stdin">$ {{ stdin }}</p>
+            </div>
+        </div>
+    </div>
+</body>
+
+<script>
+    const socket = io('http://localhost:3000');
+    const app = new Vue({
+        el: '#app',
+        data: {
+            playerId: '',
+            currentPlayerRemainingInput: 0,
+            currentPlayerId: '',
+            stdin: '',
+            stdout: [],
+            enterUp: true,
+        },
+        created() {
+            socket.on('connect', () => {
+                this.playerId = socket.io.engine.id;
+            });
+
+            socket.on('tldr', (data) => {
+                this.currentPlayerId = data.currentPlayer;
+                this.currentPlayerRemainingInput = data.currentPlayerRemainingInput;
+            });
+
+            socket.on('stdin', (data) => {
+                this.stdin += data.stdin;
+                this.currentPlayerRemainingInput = data.currentPlayerRemainingInput;
+            });
+
+            socket.on('abort', (currentPlayerRemainingInput) => {
+                this.stdin = '';
+                this.currentPlayerRemainingInput = currentPlayerRemainingInput;
+            });
+
+            socket.on('stdout', (data) => {
+                this.stdout.push(`${this.stdin}`)
+                this.stdout.push(data.stdout)
+                this.stdin = ''
+                this.currentPlayerRemainingInput = data.currentPlayerRemainingInput;
+            });
+
+            socket.on('backspace', (currentPlayerRemainingInput) => {
+                this.stdin = '';
+                this.currentPlayerRemainingInput = currentPlayerRemainingInput;
+            });
+
+            socket.on('currentPlayer', (data) => {
+                this.currentPlayerId = data.currentPlayer;
+                this.currentPlayerRemainingInput = data.currentPlayerRemainingInput;
+            });
+
+            document.onkeyup = (event) => {
+                if (event.key === 'Enter') {
+                    this.enterUp = true;
+                }
+            }
+
+            document.onkeydown = (event) => {
+                if (event.key === 'Enter') {
+                    socket.emit('run');
+                    this.enterUp = false;
+                    return;
+                }
+
+                if (event.key === 'Escape') {
+                    socket.emit('abort');
+                    return;
+                }
+
+                if (event.key === 'Backspace') {
+                    socket.emit('backspace');
+                    return;
+                }
+
+                if (event.key.length === 1) {
+                    socket.emit('stdin', event.key);
+                    return;
+                }
+
+                console.log('Invalid input "' + event.key + '" is not being transmitted to the server');
+            }
+        }
+    })
+</script>
+</html>
