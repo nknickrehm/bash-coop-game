@@ -10,7 +10,7 @@ Every player will see stdin and stdout even if they are not the active player.
 Have fun, but be careful as the host, because other players might execute dangerous commands on your computer. 
 I highly recommend running this game within a container, to mitigate potential risks for the host.
 
-![Screenshot of the game](https://github.com/nknickrehm/bash-coop-game/blob/master/image.jpg?raw=true)
+![Screenshot of the game](https://github.com/nknickrehm/bash-coop-game/blob/master/screenshot.png?raw=true)
 ## Build and run
 - Build the container `docker build -t bash-coop-game .`
 - Start the container `docker run -p 3000:3000 bash-coop-game`
